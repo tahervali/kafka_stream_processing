@@ -8,8 +8,8 @@ from faker import Faker
 from kafka import KafkaProducer
 
 
-kafka_nodes = "kafka:9092"
-myTopic = "weather"
+kafka_nodes = "localhost:9092"
+myTopic = "my-topic"
 
 
 def gen_data():
