@@ -38,6 +38,18 @@ services:
       PRODUCER_INTERVAL: 2
     networks:
       - kafka-net
+  
+  custom_consumer:
+    build:
+      context: ./spark_kafka_consumer
+    depends_on:
+      custom-producer:
+          condition: service_started
+    environment:
+      KAFKA_SERVER: "broker:9092"
+      CONSUMER_INTERVAL: 2
+    networks:
+      - kafka-net
 
 networks:
   kafka-net:
