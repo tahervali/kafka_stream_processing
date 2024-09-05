@@ -31,8 +31,12 @@ def generate_log_data():
             - campaign_id (int): The campaign ID
     """
     view_id = str(uuid.uuid4())  # Generate a unique ID for the record
-    start_timestamp = fake.date_time_this_year()  # Generate a random start time in the current year
-    end_timestamp = start_timestamp + timedelta(seconds=random.randint(1, 300))  # Generate end time after start time
+    start_timestamp = (
+        fake.date_time_this_year()
+    )  # Generate a random start time in the current year
+    end_timestamp = start_timestamp + timedelta(
+        seconds=random.randint(1, 300)
+    )  # Generate end time after start time
     banner_id = random.randint(1, 1000)  # Generate a random banner ID
     campaign_id = random.randint(1, 200)  # Generate a random campaign ID
 
@@ -42,7 +46,7 @@ def generate_log_data():
         "start_timestamp": start_timestamp.isoformat(),
         "end_timestamp": end_timestamp.isoformat(),
         "banner_id": banner_id,
-        "campaign_id": campaign_id
+        "campaign_id": campaign_id,
     }
 
 
