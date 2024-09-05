@@ -20,13 +20,12 @@ services:
       KAFKA_NUM_PARTITIONS: 3
       CLUSTER_ID: 'OTYwMzU2ZWU3MDQwNGU1Nz'
     healthcheck:
-    # docker exec -it broker kafka-broker-api-versions --bootstrap-server localhost:9092
       test: ["CMD", "/opt/kafka/bin/kafka-broker-api-versions.sh", "--bootstrap-server", "localhost:9092"]
       interval: 10s
       timeout: 5s
       retries: 5
-    volumes:
-      - kafka_data:/var/lib/kafka/data
+    # volumes:
+    #   - kafka_data:/var/lib/kafka/data
     networks:
       - kafka-net
 
@@ -46,5 +45,5 @@ networks:
   kafka-net:
     driver: bridge
 
-volumes:
-  kafka_data:
+# volumes:
+#   kafka_data:
