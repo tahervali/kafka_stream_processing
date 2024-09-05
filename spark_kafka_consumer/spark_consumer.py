@@ -1,7 +1,7 @@
 import logging
 
 from pyspark.sql import SparkSession
-from pyspark.sql.functions import col, from_json, unix_timestamp, avg, count
+from pyspark.sql.functions import col, from_json, unix_timestamp, avg, count, window, to_timestamp
 from pyspark.sql.types import (
     StructType,
     StructField,
@@ -33,21 +33,32 @@ def read_data_from_kafka(spark, config):
         .selectExpr("CAST(value AS STRING)")
         .select(from_json(col("value"), view_log_schema).alias("view_log"))
         .select("view_log.*")
+        .withColumn(
+            "start_timestamp",
+            to_timestamp(col("start_timestamp"), "dd-MM-YYYY HH:mm:ss")
+        )
+        .withColumn(
+            "end_timestamp",
+            to_timestamp(col("end_timestamp"), "dd-MM-YYYY HH:mm:ss")
+        )
     )
 
 
 def process_data(df):
+    # Add a calculated column for view duration (end_timestamp - start_timestamp)
     df_with_duration = df.withColumn(
         "view_duration",
         unix_timestamp(col("end_timestamp")) - unix_timestamp(col("start_timestamp")),
     )
+
     return (
-        df_with_duration.withWatermark("end_timestamp", "1 minute")
-        .groupBy(col("campaign_id"), col("end_timestamp").alias("minute_timestamp"))
+        df_with_duration.withWatermark("end_timestamp", "10 seconds")
+        .groupBy(col("campaign_id"),
+                 window(col("end_timestamp"), "1 minute").alias("minute_window"))
         .agg(
             avg("view_duration").alias("avg_duration"),
             count("view_id").alias("total_count"),
-        )
+        ).withColumn("minute_timestamp", col("minute_window.start"))
     )
 
 
@@ -99,9 +110,13 @@ def main():
 
     df = read_data_from_kafka(spark, config)
     df.printSchema()
+
+    df = process_data(df)
+    df.printSchema()
+
     df.writeStream.format("console").outputMode("append").option(
         "truncate", False
-    ).trigger(processingTime="10 seconds").start().awaitTermination()
+    ).trigger(processingTime="15 seconds").start().awaitTermination()
     # processed_df = process_data(df)
     # processed_df
 

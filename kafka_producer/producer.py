@@ -20,7 +20,7 @@ logger = setup_logging()
 
 def generate_log_data():
     """
-    Generates a fake log record according to the specified schema.
+    Generates a simulated log record according to the specified schema.
 
     Returns:
         dict: A dictionary containing the log data with the following fields:
@@ -37,8 +37,9 @@ def generate_log_data():
     end_timestamp = start_timestamp + timedelta(
         seconds=random.randint(1, 300)
     )  # Generate end time after start time
-    banner_id = random.randint(1, 1000)  # Generate a random banner ID
-    campaign_id = random.randint(1, 200)  # Generate a random campaign ID
+
+    banner_id = random.randint(1, 100000)  # Generate a random banner ID
+    campaign_id = random.choice(list(range(10, 200 + 1, 10)))  # Generate a random campaign ID
 
     # Return the generated data as a dictionary
     return {
