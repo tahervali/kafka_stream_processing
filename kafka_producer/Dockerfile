@@ -7,6 +7,8 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy resources
 COPY producer.py .
+COPY utils.py .
+COPY config.py .
 COPY wait-for-kafka.sh .
 RUN chmod +x wait-for-kafka.sh
 # COPY wait-for-it.sh wait-for-it.sh
