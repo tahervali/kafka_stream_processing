@@ -14,8 +14,8 @@ config = Config(
         "RETRY_DELAY": int(os.getenv("RETRY_DELAY", 5)),  # seconds
         "PRODUCER_INTERVAL": float(os.getenv("PRODUCER_INTERVAL", 1)),
         "LOG_LEVEL": "INFO",
-        "campaigns_csv_path": "campaigns.csv",
-        "checkpoint_location": "output",
-        "reports_location": "output",
+        "campaigns_csv_path": "/app/input_data/campaigns.csv",
+        "checkpoint_location": "/app/data/_savloc",
+        "reports_location": "/app/data/",
     }
 )

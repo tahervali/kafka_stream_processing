@@ -2,7 +2,7 @@ FROM python:3.9-slim-bullseye
 
 # Install OpenJDK 17
 RUN apt-get update && \
-    apt-get install -y openjdk-17-jdk && \
+    apt-get install -y wget gzip openjdk-17-jdk build-essential software-properties-common libc6 cmake && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
@@ -11,7 +11,7 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy resources
-COPY campaigns.csv .
+# COPY campaigns.csv .
 COPY spark_consumer.py .
 COPY utils.py .
 COPY config.py .
