@@ -16,6 +16,7 @@ services:
       KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
       KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
       KAFKA_NUM_PARTITIONS: 3
+      KAFKA_TOPIC_CONFIG_retention.ms: 180000 # 3 minute retention period
       CLUSTER_ID: 'OTYwMzU2ZWU3MDQwNGU1Nz'
     healthcheck:
       test: ["CMD", "/opt/kafka/bin/kafka-broker-api-versions.sh", "--bootstrap-server", "localhost:9092"]
