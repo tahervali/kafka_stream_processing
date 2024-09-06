@@ -2,17 +2,13 @@ import json
 import random
 import time
 import uuid
-from datetime import timedelta
+from datetime import timedelta, datetime
 
-from faker import Faker
 from kafka import KafkaProducer
 from kafka.errors import KafkaError
 
 from config import KAFKA_SERVER, TOPIC_NAME, MAX_RETRIES, RETRY_DELAY, PRODUCER_INTERVAL
 from utils import setup_logging
-
-# Initialize Faker instance
-fake = Faker()
 
 # Initialize logger
 logger = setup_logging()
@@ -31,15 +27,10 @@ def generate_log_data():
             - campaign_id (int): The campaign ID
     """
     view_id = str(uuid.uuid4())  # Generate a unique ID for the record
-    start_timestamp = (
-        fake.date_time_this_year()
-    )  # Generate a random start time in the current year
-    end_timestamp = start_timestamp + timedelta(
-        seconds=random.randint(1, 300)
-    )  # Generate end time after start time
-
+    start_timestamp = datetime.now()
+    end_timestamp = start_timestamp + timedelta(seconds=random.randint(1, 300))
     banner_id = random.randint(1, 100000)  # Generate a random banner ID
-    campaign_id = random.choice(list(range(10, 200 + 1, 10)))  # Generate a random campaign ID
+    campaign_id = random.choice(list(range(10, 140 + 1, 10)))  # Generate a random campaign ID
 
     # Return the generated data as a dictionary
     return {

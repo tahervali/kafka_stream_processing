@@ -11,6 +11,7 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy resources
+COPY campaigns.csv .
 COPY spark_consumer.py .
 # COPY utils.py .
 COPY config.py .

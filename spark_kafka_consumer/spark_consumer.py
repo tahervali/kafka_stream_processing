@@ -1,7 +1,7 @@
 import logging
 
 from pyspark.sql import SparkSession
-from pyspark.sql.functions import col, from_json, unix_timestamp, avg, count, window, to_timestamp
+from pyspark.sql.functions import col, from_json, unix_timestamp, avg, count, window, to_timestamp, broadcast, round
 from pyspark.sql.types import (
     StructType,
     StructField,
@@ -10,11 +10,10 @@ from pyspark.sql.types import (
     TimestampType,
 )
 
-# from utils import get_spark_session, get_logger, load_config
 from config import config
 
 
-def read_data_from_kafka(spark, config):
+def read_data_from_kafka(spark):
     view_log_schema = StructType(
         [
             StructField("view_id", StringType(), True),
@@ -44,29 +43,31 @@ def read_data_from_kafka(spark, config):
     )
 
 
-def process_data(df):
-    # Add a calculated column for view duration (end_timestamp - start_timestamp)
+def process_data(df, broadcast_campaigns_df):
     df_with_duration = df.withColumn(
         "view_duration",
         unix_timestamp(col("end_timestamp")) - unix_timestamp(col("start_timestamp")),
     )
 
+    # Perform the join with broadcast
+    joined_df = df_with_duration.join(
+        broadcast_campaigns_df, on="campaign_id", how="left"
+    )
+
+    joined_df.printSchema()
+
     return (
-        df_with_duration.withWatermark("end_timestamp", "10 seconds")
-        .groupBy(col("campaign_id"),
-                 window(col("end_timestamp"), "1 minute").alias("minute_window"))
+        joined_df.withWatermark("end_timestamp", "10 seconds")
+        .groupBy(col("campaign_id"), window(col("end_timestamp"), "1 minute").alias("minute_window"))
         .agg(
-            avg("view_duration").alias("avg_duration"),
+            round(avg("view_duration"), 2).alias("avg_duration"),
             count("view_id").alias("total_count"),
         ).withColumn("minute_timestamp", col("minute_window.start"))
     )
 
 
-def write_data_to_parquet(df, config):
-    campaigns_df = df.spark.read.csv(
-        config["spark"]["campaigns_csv_path"], header=True, inferSchema=True
-    ).withColumnRenamed("id", "campaign_id")
-    final_df = df.join(campaigns_df, on="campaign_id", how="left").select(
+def write_data_to_parquet(df, broadcast_campaigns_df):
+    final_df = df.join(broadcast_campaigns_df, on="campaign_id", how="left").select(
         col("campaign_id"),
         col("network_id"),
         col("minute_timestamp"),
@@ -74,9 +75,9 @@ def write_data_to_parquet(df, config):
         col("total_count"),
     )
 
-    final_df.writeStream.outputMode("update").format("parquet").option(
-        "checkpointLocation", config["spark"]["checkpoint_location"]
-    ).option("path", config["spark"]["reports_location"]).partitionBy(
+    final_df.writeStream.outputMode("append").format("parquet").option(
+        "checkpointLocation", config["checkpoint_location"]
+    ).option("path", config["reports_location"]).partitionBy(
         "network_id", "minute_timestamp"
     ).start().awaitTermination()
 
@@ -104,23 +105,27 @@ def get_logger() -> logging.Logger:
 
 
 def main():
-    # config = load_config("config.yml")
     spark = get_spark_session()
     # logger = get_logger()
 
-    df = read_data_from_kafka(spark, config)
+    # Read campaigns.csv and broadcast it
+    campaigns_df = spark.read.csv(
+        config["campaigns_csv_path"], header=True, inferSchema=True
+    )
+    broadcast_campaigns_df = broadcast(campaigns_df)
+
+    # Read Kafka topic
+    df = read_data_from_kafka(spark)
     df.printSchema()
 
-    df = process_data(df)
-    df.printSchema()
+    processed_df = process_data(df, broadcast_campaigns_df)
+    processed_df.printSchema()
 
-    df.writeStream.format("console").outputMode("append").option(
+    processed_df.writeStream.format("console").outputMode("append").option(
         "truncate", False
     ).trigger(processingTime="15 seconds").start().awaitTermination()
-    # processed_df = process_data(df)
-    # processed_df
 
-    # write_data_to_parquet(processed_df, config)
+    # write_data_to_parquet(processed_df, broadcast_campaigns_df)
 
 
 if __name__ == "__main__":
