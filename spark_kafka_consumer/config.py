@@ -13,6 +13,7 @@ config = Config(
         "MAX_RETRIES": int(os.getenv("MAX_RETRIES", 5)),
         "RETRY_DELAY": int(os.getenv("RETRY_DELAY", 5)),  # seconds
         "PRODUCER_INTERVAL": float(os.getenv("PRODUCER_INTERVAL", 1)),
+        "LOG_LEVEL": "INFO",
         "campaigns_csv_path": "campaigns.csv",
         "checkpoint_location": "output",
         "reports_location": "output",

@@ -1,6 +1,18 @@
 import logging
 import sys
 
+from pyspark.sql import SparkSession
+
+
+def get_spark_session() -> SparkSession:
+    return (
+        SparkSession.builder.appName("BigDataDivasReportGenerator")
+        .config(
+            "spark.jars.packages", "org.apache.spark:spark-sql-kafka-0-10_2.12:3.1.2"
+        )
+        .getOrCreate()
+    )
+
 
 def setup_logging(log_level=logging.INFO, log_to_file=False, log_file_path="/var/log/app/app.log"):
     """
