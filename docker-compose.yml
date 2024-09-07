@@ -50,8 +50,8 @@ services:
       KAFKA_SERVER: "broker:9092"
       CONSUMER_INTERVAL: 2
     volumes:
-      - ./consumer_data:/app/data
-      - ./input_data:/app/input_data
+      - ./log_data/output_data:/app/data
+      - ./log_data/input_data:/app/input_data
     networks:
       - kafka-net
 

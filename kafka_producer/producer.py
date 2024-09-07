@@ -24,8 +24,8 @@ def generate_log_data():
             - campaign_id (int): Randomly generated campaign ID (from 10 to 140 in increments of 10).
     """
     view_id = str(uuid.uuid4())  # Generate a unique ID for the record
-    start_timestamp = datetime.now()
-    end_timestamp = start_timestamp + timedelta(seconds=random.randint(1, 300))
+    start_timestamp = datetime.now().replace(microsecond=0)
+    end_timestamp = (start_timestamp + timedelta(seconds=random.randint(1, 300))).replace(microsecond=0)
     banner_id = random.randint(1, 100000)  # Generate a random banner ID
     campaign_id = random.choice(range(10, 141, 10))  # Generate a random campaign ID
 
