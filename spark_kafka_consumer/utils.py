@@ -11,6 +11,10 @@ def get_spark_session() -> SparkSession:
             "spark.jars.packages", "org.apache.spark:spark-sql-kafka-0-10_2.12:3.1.2"
         )
         .config("spark.sql.parquet.compression.codec", "gzip")
+        .config("spark.sql.streaming.noDataMicroBatches.enabled", "false")
+        .config("spark.streaming.kafka.consumer.poll.ms", "500")
+        # .config("parquet.block.size", "268435456")
+        .config("spark.sql.shuffle.partitions", "30")
         .getOrCreate()
     )
 

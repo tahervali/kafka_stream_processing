@@ -77,7 +77,8 @@ class ViewLogProcessor:
         """
         try:
             return (
-                df.withColumn(
+                df.dropDuplicates(["view_id"])
+                .withColumn(
                     "view_duration",
                     unix_timestamp(col("end_timestamp")) - unix_timestamp(col("start_timestamp"))
                 )
@@ -158,7 +159,7 @@ def main():
         # Read and broadcast the campaign data
         campaigns_df = spark.read.csv(
             config["campaigns_csv_path"], header=True, inferSchema=True
-        )
+        ).repartition("campaign_id")
         broadcast_campaigns_df = broadcast(campaigns_df)
 
         # Read streaming data from Kafka

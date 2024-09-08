@@ -15,7 +15,7 @@ config = Config(
         "PRODUCER_INTERVAL": float(os.getenv("PRODUCER_INTERVAL", 1)),
         "LOG_LEVEL": "INFO",
         "campaigns_csv_path": "/app/input_data/campaigns.csv",
-        "checkpoint_location": "/app/data/_savloc",
+        "checkpoint_location": "/app/data/_saveloc",
         "reports_location": "/app/data/",
     }
 )
