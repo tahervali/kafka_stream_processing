@@ -2,15 +2,12 @@ import logging
 import sys
 
 
-def setup_logging(log_level=logging.INFO, log_to_file=False, log_file_path="/var/log/app/app.log"):
+def setup_logging(log_level=logging.INFO):
     """
     Sets up the logging configuration for Dockerized environments.
 
-    Args:
+    Parameters:
         log_level (int): The logging level to use (default: INFO).
-        log_to_file (bool): Whether to log to a file (default: False).
-        log_file_path (str): The file path to log to, if log_to_file is True (default: "/var/log/app/app.log").
-
     Returns:
         logging.Logger: Configured logger instance.
     """
@@ -26,11 +23,5 @@ def setup_logging(log_level=logging.INFO, log_to_file=False, log_file_path="/var
     console_handler = logging.StreamHandler(sys.stdout)
     console_handler.setFormatter(formatter)
     logger.addHandler(console_handler)
-
-    # Set up file logging handler if enabled (logs will be written inside the Docker container)
-    if log_to_file:
-        file_handler = logging.FileHandler(log_file_path)
-        file_handler.setFormatter(formatter)
-        logger.addHandler(file_handler)
 
     return logger
