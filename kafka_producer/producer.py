@@ -7,7 +7,7 @@ from datetime import timedelta, datetime
 from kafka import KafkaProducer
 from kafka.errors import KafkaError
 
-from config import KAFKA_SERVER, TOPIC_NAME, MAX_RETRIES, RETRY_DELAY, PRODUCER_INTERVAL, LOG_LEVEL
+from config import config
 from utils import setup_logging
 
 
@@ -60,7 +60,7 @@ class CustomKafkaProducer:
         retries = 0
         producer = None
 
-        while retries < MAX_RETRIES:
+        while retries < config.MAX_RETRIES:
             try:
                 # Initialize the Kafka producer with JSON serialization
                 producer = KafkaProducer(
@@ -71,8 +71,8 @@ class CustomKafkaProducer:
                 return producer
             except KafkaError as e:
                 retries += 1
-                logger.error(f"Failed to connect to Kafka broker (attempt {retries}/{MAX_RETRIES}): {e}")
-                time.sleep(RETRY_DELAY)
+                logger.error(f"Failed to connect to Kafka broker (attempt {retries}/{config.MAX_RETRIES}): {e}")
+                time.sleep(config.RETRY_DELAY)
 
         raise KafkaError("Failed to connect to Kafka broker after maximum retries.")
 
@@ -85,7 +85,7 @@ class CustomKafkaProducer:
         """
         try:
             # Send the message to the Kafka topic
-            self.producer.send(TOPIC_NAME, value=message)
+            self.producer.send(config.TOPIC_NAME, value=message)
             self.producer.flush()  # Ensure all messages are sent immediately
             logger.info(f"Produced message: {message}")
         except KafkaError as e:
@@ -103,18 +103,18 @@ class CustomKafkaProducer:
 
 if __name__ == "__main__":
     # Initialize logger
-    logger = setup_logging(LOG_LEVEL)
+    logger = setup_logging(config.LOG_LEVEL)
     logger.info("Kafka producer starting...")
 
     try:
         # Create Kafka producer
-        producer = CustomKafkaProducer(KAFKA_SERVER)
+        producer = CustomKafkaProducer(config.KAFKA_SERVER)
 
         # Continuously generate and send log data to Kafka
         while True:
             log_data = generate_log_data()  # Generate a new log data record
             producer.publish_message(log_data)  # Produce the log data to the Kafka topic
-            time.sleep(PRODUCER_INTERVAL)  # Wait for a specified interval before producing the next message
+            time.sleep(config.PRODUCER_INTERVAL)  # Wait for a specified interval before producing the next message
 
     except Exception as e:
         logger.error(f"An error occurred: {e}")

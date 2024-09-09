@@ -51,8 +51,8 @@ class ViewLogProcessor:
 
             df = (
                 self.spark.readStream.format("kafka")
-                .option("kafka.bootstrap.servers", config["KAFKA_SERVER"])
-                .option("subscribe", config["TOPIC_NAME"])
+                .option("kafka.bootstrap.servers", config.KAFKA_SERVER)
+                .option("subscribe", config.TOPIC_NAME)
                 .load()
                 .selectExpr("CAST(value AS STRING)")
                 .select(from_json(col("value"), view_log_schema).alias("view_log"))
@@ -128,8 +128,8 @@ class ViewLogProcessor:
                 final_df.writeStream
                 .outputMode("append")
                 .format("parquet")
-                .option("checkpointLocation", config["checkpoint_location"])
-                .option("path", config["reports_location"])
+                .option("checkpointLocation", config.CHECKPOINT_LOCATION)
+                .option("path", config.REPORTS_LOCATION)
                 .partitionBy("network_id", "minute_timestamp")
                 .start()
                 .awaitTermination()
@@ -151,14 +151,14 @@ def main():
         spark = get_spark_session()
 
         # Initialize Spark session
-        logger = setup_logging(config["LOG_LEVEL"])
+        logger = setup_logging(config.LOG_LEVEL)
 
         # Create instance of ViewLogProcessor
         processor = ViewLogProcessor(spark, logger)
 
         # Read and broadcast the campaign data
         campaigns_df = spark.read.csv(
-            config["campaigns_csv_path"], header=True, inferSchema=True
+            config.CAMPAIGNS_CSV_PATH, header=True, inferSchema=True
         ).repartition("campaign_id")
         broadcast_campaigns_df = broadcast(campaigns_df)
 
