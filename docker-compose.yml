@@ -24,7 +24,7 @@ services:
       timeout: 5s
       retries: 5
     volumes:
-      - ${BROKER_DATA}:/var/lib/kafka/data
+      - ./${BROKER_DATA}:/var/lib/kafka/data
     networks:
       - kafka-net
 
@@ -33,8 +33,10 @@ services:
       context: ./kafka_producer
       target: production
     depends_on:
+      producer-test:
+        condition: service_completed_successfully
       broker:
-          condition: service_started
+        condition: service_healthy
     environment:
       KAFKA_SERVER: ${KAFKA_SERVER}
       PRODUCER_INTERVAL: ${PRODUCER_INTERVAL}
@@ -55,15 +57,28 @@ services:
   custom_consumer:
     build:
       context: ./spark_kafka_consumer
+      target: production
     depends_on:
       custom-producer:
           condition: service_started
+      consumer-test:
+        condition: service_completed_successfully
     environment:
       KAFKA_SERVER: ${KAFKA_SERVER}
       CONSUMER_INTERVAL: ${CONSUMER_INTERVAL}
     volumes:
       - ./${LOG_DATA}/output_data:/app/data
       - ./${LOG_DATA}/input_data:/app/input_data
+    networks:
+      - kafka-net
+  
+  consumer-test:
+    build:
+      context: ./spark_kafka_consumer
+      target: test
+    depends_on:
+      broker:
+          condition: service_started
     networks:
       - kafka-net
 

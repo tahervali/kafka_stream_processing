@@ -11,8 +11,7 @@ COPY utils.py .
 COPY config.py .
 COPY wait-for-kafka.sh .
 RUN chmod +x wait-for-kafka.sh
-# COPY wait-for-it.sh wait-for-it.sh
-# RUN echo "host.docker.internal host-gateway" >> /etc/hosts
+
 
 FROM base as test
 WORKDIR /app
