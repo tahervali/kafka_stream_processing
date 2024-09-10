@@ -31,12 +31,24 @@ services:
   custom-producer:
     build:
       context: ./kafka_producer
+      target: production
     depends_on:
       broker:
           condition: service_started
     environment:
       KAFKA_SERVER: ${KAFKA_SERVER}
       PRODUCER_INTERVAL: ${PRODUCER_INTERVAL}
+    networks:
+      - kafka-net
+  
+  producer-test:
+    build:
+      context: ./kafka_producer
+      dockerfile: Dockerfile
+      target: test
+    depends_on:
+      broker:
+          condition: service_started
     networks:
       - kafka-net
   
