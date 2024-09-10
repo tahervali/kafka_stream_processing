@@ -3,40 +3,55 @@ from pydantic import BaseModel, Field, ConfigDict, field_validator
 
 class Config(BaseModel):
     """
-    Config class for managing application settings using Pydantic's BaseModel in V2.
+    Config class for managing application settings using Pydantic's BaseModel.
     Automatically loads values from environment variables or defaults specified via Field declarations.
-
-    Attributes:
-        KAFKA_SERVER (str): The Kafka server address, defaulting to "broker:9092".
-        TOPIC_NAME (str): Kafka topic to produce/consume messages, default "test_topic".
-        MAX_RETRIES (int): Maximum number of retries for failed operations, default 5.
-        RETRY_DELAY (int): Delay between retries in seconds, default 5 seconds.
-        PRODUCER_INTERVAL (float): Interval between producer messages in seconds, default 1.0.
-        LOG_LEVEL (str): Logging level for the application, default "INFO".
+    Also, Validate the fields using field_validator.
     """
 
     KAFKA_SERVER: str = Field(default="broker:9092", env="KAFKA_SERVER")
     TOPIC_NAME: str = Field(default="test_topic", env="TOPIC_NAME")
-    MAX_RETRIES: int = Field(default=5, env="MAX_RETRIES")
-    RETRY_DELAY: int = Field(default=5, env="RETRY_DELAY")  # seconds
-    PRODUCER_INTERVAL: int = Field(default=1, env="PRODUCER_INTERVAL")
     LOG_LEVEL: str = Field(default="INFO", env="LOG_LEVEL")
+    WINDOW_DURATION: str = Field(default="1 minute", env="WINDOW_DURATION")
+    WATERMARK_DELAY: str = Field(default="10 seconds", env="WATERMARK_DELAY")
+    PROCESSING_TIME: str = Field(default="0 seconds", env="PROCESSING_TIME")
     CAMPAIGNS_CSV_PATH: str = Field(default="/app/input_data/campaigns.csv")
     CHECKPOINT_LOCATION: str = Field(default="/app/data/_saveloc")
     REPORTS_LOCATION: str = Field(default="/app/data/")
 
     model_config = ConfigDict(env_file=".env", validate_assignment=True)
 
-    @field_validator("MAX_RETRIES", "RETRY_DELAY", mode="before")
-    def check_positive(cls, value):
+    # Validator to check the validity of the time fields
+    @field_validator("WINDOW_DURATION", "WATERMARK_DELAY", "PROCESSING_TIME", mode="before")
+    def validate_time_format(cls, value: str) -> str:
         """
-        Validator to ensure that retry-related configurations (MAX_RETRIES, RETRY_DELAY) are positive integers.
-        Raises:
-            ValueError: If the value is less than 0.
+        Validates the format of the time duration fields to ensure they follow proper format.
+        Example formats: "1 minute", "30 seconds", "0 seconds".
         """
-        if value < 0:
-            raise ValueError("Value must be positive")
+        if "minute" not in value and "seconds" not in value:
+            raise ValueError(f"Invalid time format for {value}. Must contain 'minute' or 'seconds'.")
         return value
+
+    # Validator to check if paths are non-empty strings
+    @field_validator("CAMPAIGNS_CSV_PATH", "CHECKPOINT_LOCATION", "REPORTS_LOCATION", mode="before")
+    def validate_paths(cls, value: str) -> str:
+        """
+        Validates that path fields are not empty.
+        Raises:
+            ValueError: If the path is an empty string.
+        """
+        if not value or not isinstance(value, str):
+            raise ValueError(f"Invalid path: {value}. Must be a non-empty string.")
+        return value
+
+    @field_validator("LOG_LEVEL", mode="before")
+    def validate_log_level(cls, value: str) -> str:
+        """
+        Validates the log level to ensure it's a valid logging level.
+        """
+        valid_levels = {"DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"}
+        if value.upper() not in valid_levels:
+            raise ValueError(f"Invalid LOG_LEVEL: {value}. Must be one of {valid_levels}.")
+        return value.upper()
 
 
 # Instantiate the configuration class (this reads from environment variables or uses defaults)

@@ -39,7 +39,7 @@ def generate_log_data():
 
 
 class CustomKafkaProducer:
-    def __init__(self, bootstrap_servers):
+    def __init__(self, bootstrap_servers: str):
         """
         Initializes the CustomKafkaProducer with the given Kafka bootstrap servers.
 
@@ -49,7 +49,7 @@ class CustomKafkaProducer:
         self.bootstrap_servers = bootstrap_servers
         self.producer = self.connect()
 
-    def connect(self):
+    def connect(self) -> KafkaProducer:
         """
         Attempts to connect to the Kafka broker with retry logic.
         If the connection fails after MAX_RETRIES, an exception is raised.
@@ -58,11 +58,8 @@ class CustomKafkaProducer:
             KafkaProducer: A connected KafkaProducer instance.
         """
         retries = 0
-        producer = None
-
         while retries < config.MAX_RETRIES:
             try:
-                # Initialize the Kafka producer with JSON serialization
                 producer = KafkaProducer(
                     bootstrap_servers=self.bootstrap_servers,
                     value_serializer=lambda v: json.dumps(v).encode("utf-8"),
@@ -76,7 +73,7 @@ class CustomKafkaProducer:
 
         raise KafkaError("Failed to connect to Kafka broker after maximum retries.")
 
-    def publish_message(self, message):
+    def publish_message(self, message: dict):
         """
         Publishes a message to the Kafka topic.
 
@@ -84,12 +81,11 @@ class CustomKafkaProducer:
             message (dict): The message to be sent to the Kafka topic.
         """
         try:
-            # Send the message to the Kafka topic
             self.producer.send(config.TOPIC_NAME, value=message)
             self.producer.flush()  # Ensure all messages are sent immediately
             logger.info(f"Produced message: {message}")
-        except KafkaError as e:
-            logger.error(f"Failed to produce message: {e}")
+        except KafkaError as kafka_error:
+            logger.error(f"Failed to produce message: {kafka_error}")
             raise
 
     def close(self):
@@ -106,19 +102,20 @@ if __name__ == "__main__":
     logger = setup_logging(config.LOG_LEVEL)
     logger.info("Kafka producer starting...")
 
+    producer_instance = None
     try:
         # Create Kafka producer
-        producer = CustomKafkaProducer(config.KAFKA_SERVER)
+        producer_instance = CustomKafkaProducer(config.KAFKA_SERVER)
 
         # Continuously generate and send log data to Kafka
         while True:
             log_data = generate_log_data()  # Generate a new log data record
-            producer.publish_message(log_data)  # Produce the log data to the Kafka topic
+            producer_instance.publish_message(log_data)  # Produce the log data to the Kafka topic
             time.sleep(config.PRODUCER_INTERVAL)  # Wait for a specified interval before producing the next message
 
     except Exception as e:
         logger.error(f"An error occurred: {e}")
     finally:
         # Ensure the producer connection is closed on exit
-        if 'producer' in locals():
-            producer.close()
+        if producer_instance:
+            producer_instance.close()
