@@ -15,8 +15,10 @@ RUN chmod +x wait-for-kafka.sh
 # RUN echo "host.docker.internal host-gateway" >> /etc/hosts
 
 FROM base as test
-RUN pip install pytest pytest-asyncio
-CMD ["pytest", "tests"]
+WORKDIR /app
+COPY ./tests /app/tests
+RUN pip install pytest 
+CMD ["pytest", "/app/tests"]
 
 FROM base as production
 CMD ["./wait-for-kafka.sh", "broker", "9092","python","producer.py"]
