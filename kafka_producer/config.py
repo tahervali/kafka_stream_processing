@@ -1,42 +1,55 @@
-from pydantic import BaseModel, Field, ConfigDict, field_validator
+import os
 
 
-class Config(BaseModel):
+class Config:
     """
-    Config class for managing application settings using Pydantic's BaseModel in V2.
-    Automatically loads values from environment variables or defaults specified via Field declarations.
-
-    Attributes:
-        KAFKA_SERVER (str): The Kafka server address, defaulting to "broker:9092".
-        TOPIC_NAME (str): Kafka topic to produce/consume messages, default "test_topic".
-        MAX_RETRIES (int): Maximum number of retries for failed operations, default 5.
-        RETRY_DELAY (int): Delay between retries in seconds, default 5 seconds.
-        PRODUCER_INTERVAL (float): Interval between producer messages in seconds, default 1.0.
-        LOG_LEVEL (str): Logging level for the application, default "INFO".
+    Config class for managing application settings by loading values from environment variables.
+    Automatically uses default values if environment variables are not set.
     """
 
-    KAFKA_SERVER: str = Field(default="broker:9092", env="KAFKA_SERVER")
-    TOPIC_NAME: str = Field(default="test_topic", env="TOPIC_NAME")
-    MAX_RETRIES: int = Field(default=5, env="MAX_RETRIES")
-    RETRY_DELAY: int = Field(default=5, env="RETRY_DELAY")  # seconds
-    PRODUCER_INTERVAL: int = Field(default=1, env="PRODUCER_INTERVAL")
-    THREAD_COUNT: int = Field(default=1, env="THREAD_COUNT")
-    BATCH_SIZE: int = Field(default=1, env="BATCH_SIZE")
-    LOG_LEVEL: str = Field(default="INFO", env="LOG_LEVEL")
+    def __init__(self):
+        self.KAFKA_SERVER = os.getenv('KAFKA_SERVER', 'broker:9092')
+        self.TOPIC_NAME = os.getenv('TOPIC_NAME', 'test_topic')
+        self.MAX_RETRIES = self._check_positive(int(os.getenv('MAX_RETRIES', 5)), 'MAX_RETRIES')
+        self.RETRY_DELAY = self._check_positive(int(os.getenv('RETRY_DELAY', 3)), 'RETRY_DELAY')  # seconds
+        self.PRODUCER_INTERVAL = self._check_positive(int(os.getenv('PRODUCER_INTERVAL', 1)), 'PRODUCER_INTERVAL')
+        self.THREAD_COUNT = self._check_positive(int(os.getenv('THREAD_COUNT', 5)), 'THREAD_COUNT')
+        self.BATCH_SIZE = self._check_positive(int(os.getenv('BATCH_SIZE', 30)), 'BATCH_SIZE')
+        self.LOG_LEVEL = os.getenv('LOG_LEVEL', 'INFO')
 
-    model_config = ConfigDict(env_file=".env", validate_assignment=True)
+        # Perform further validation if needed
+        self._validate_log_level()
 
-    @field_validator("MAX_RETRIES", "RETRY_DELAY", mode="before")
-    def check_positive(cls, value):
+    @staticmethod
+    def _check_positive(value: int, field_name: str) -> int:
         """
-        Validator to ensure that retry-related configurations (MAX_RETRIES, RETRY_DELAY) are positive integers.
+        Checks if a given value is positive.
+
+        Parameters:
+            value (int or float): The value to check.
+            field_name (str): The name of the field being checked.
+
+        Returns:
+            int or float: The validated value if it's positive.
+
         Raises:
-            ValueError: If the value is less than 0.
+            ValueError: If the value is not positive.
         """
         if value < 0:
-            raise ValueError("Value must be positive")
+            raise ValueError(f"{field_name} must be positive, got {value}")
         return value
+
+    def _validate_log_level(self):
+        """
+        Additional validation for configuration fields.
+        """
+        valid_log_levels = {"DEBUG", "INFO", "WARN", "ERROR"}
+        if self.LOG_LEVEL.upper() not in valid_log_levels:
+            raise ValueError(f"Invalid LOG_LEVEL: {self.LOG_LEVEL}. Must be one of {valid_log_levels}")
 
 
 # Instantiate the configuration class (this reads from environment variables or uses defaults)
 config = Config()
+print(f" THREAD_COUNT is: {config.THREAD_COUNT}")
+print(f" BATCH_SIZE is: {config.BATCH_SIZE}")
+print(f" LOG_LEVEL is: {config.LOG_LEVEL}")

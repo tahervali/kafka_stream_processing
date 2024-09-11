@@ -37,7 +37,7 @@ class CustomKafkaProducer:
                     value_serializer=lambda v: json.dumps(v).encode("utf-8"),
                     acks='all',  # Ensure message delivery guarantee
                     linger_ms=5,  # Wait a small-time to batch records
-                    batch_size=16384  # Batch size in bytes (default is 16KB, can increase)
+                    batch_size=16384  # (default is 16KB, can be increased)
                 )
                 logger.info("Successfully connected to Kafka broker.")
                 return producer
@@ -124,6 +124,8 @@ def start_producing(kafka_producer: CustomKafkaProducer):
 
 if __name__ == "__main__":
     logger = setup_logging(config.LOG_LEVEL)
+    print(f"config.BATCH_SIZE is {config.BATCH_SIZE}")
+    print(f"config.THREAD_COUNT is {config.THREAD_COUNT}")
     logger.info("Kafka producer starting...")
 
     producer_instance = None

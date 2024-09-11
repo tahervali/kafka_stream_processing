@@ -37,14 +37,21 @@ def generate_log_data():
     Returns:
         dict: A dictionary containing the log data with the following fields:
             - view_id (str): Unique ID of the record.
-            - start_timestamp (str): Timestamp when the view started.
-            - end_timestamp (str): Timestamp when the view ended (and pushed to Kafka).
+            - start_timestamp (str): Arbitrary start timestamp for the view.
+            - end_timestamp (str): Timestamp when the view ended, always less than or equal to the current time.
             - banner_id (int): Randomly generated banner ID.
             - campaign_id (int): Randomly generated campaign ID (from 10 to 140 in increments of 10).
     """
     view_id = str(uuid.uuid4())  # Generate a unique ID for the record
-    start_timestamp = datetime.now().replace(microsecond=0)
-    end_timestamp = (start_timestamp + timedelta(seconds=random.randint(1, 300))).replace(microsecond=0)
+
+    # Generate random start_timestamp within the last half hour
+    now = datetime.now().replace(microsecond=0)
+    start_timestamp = now - timedelta(seconds=random.randint(0, 1800))
+
+    # Generate a random end_timestamp that must be <= current time and >= start_timestamp
+    max_duration = (now - start_timestamp).total_seconds()  # Max possible duration in seconds
+    end_timestamp = start_timestamp + timedelta(seconds=random.randint(1, int(max_duration)))
+
     banner_id = random.randint(1, 100000)  # Generate a random banner ID
     campaign_id = random.choice(range(10, 141, 10))  # Generate a random campaign ID
 
