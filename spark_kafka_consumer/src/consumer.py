@@ -204,9 +204,6 @@ def main():
 
     # Initialize logger
     logger = setup_logging(config.LOG_LEVEL)
-    logger.info(f"KAFKA_SERVER: {config.KAFKA_SERVER}")
-    logger.info(f"LOG_LEVEL: {config.LOG_LEVEL}")
-    logger.info(f"TEST_VALUE: {config.TEST_VALUE}")
 
     try:
         # Initialize Spark session

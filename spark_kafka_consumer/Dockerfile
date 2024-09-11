@@ -14,8 +14,6 @@ COPY src/ ./src/
 COPY tests/ ./tests/
 COPY wait-for-kafka.sh .
 RUN chmod +x wait-for-kafka.sh
-# COPY wait-for-it.sh wait-for-it.sh
-# RUN echo "host.docker.internal host-gateway" >> /etc/hosts
 ENV PYTHONPATH="${PYTHONPATH}:/app/src"
 
 
@@ -26,4 +24,4 @@ CMD ["pytest", "/app/tests"]
 
 FROM base AS production
 WORKDIR /app
-CMD ["./wait-for-kafka.sh", "broker", "9092","python","./src/spark_consumer.py"]
+CMD ["./wait-for-kafka.sh", "broker", "9092","python","./src/consumer.py"]

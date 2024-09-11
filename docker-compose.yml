@@ -78,7 +78,6 @@ services:
       WATERMARK_DELAY: ${WATERMARK_DELAY}
       PROCESSING_TIME: ${PROCESSING_TIME}
       BASE_DATA_LOC_CONTAINER: ${BASE_DATA_LOC_CONTAINER}
-      TEST_VALUE: ${TEST_VALUE}
     volumes:
       - ./${LOG_DATA}:${BASE_DATA_LOC_CONTAINER}
       # - ./${LOG_DATA}/input_data:/app/data/input_data

@@ -5,12 +5,6 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy resources
-# COPY producer.py .
-# COPY utils.py .
-# COPY config.py .
-# COPY __init__.py /app/kafka_producer
-
 COPY src/ ./src/
 COPY tests/ ./tests/
 COPY wait-for-kafka.sh .
