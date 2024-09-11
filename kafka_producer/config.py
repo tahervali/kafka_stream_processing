@@ -20,6 +20,8 @@ class Config(BaseModel):
     MAX_RETRIES: int = Field(default=5, env="MAX_RETRIES")
     RETRY_DELAY: int = Field(default=5, env="RETRY_DELAY")  # seconds
     PRODUCER_INTERVAL: int = Field(default=1, env="PRODUCER_INTERVAL")
+    THREAD_COUNT: int = Field(default=1, env="THREAD_COUNT")
+    BATCH_SIZE: int = Field(default=1, env="BATCH_SIZE")
     LOG_LEVEL: str = Field(default="INFO", env="LOG_LEVEL")
 
     model_config = ConfigDict(env_file=".env", validate_assignment=True)

@@ -27,7 +27,7 @@ class ViewLogProcessor:
         watermark_delay (str): The maximum duration of allowed late data.
         processing_time (str): The processing time interval for the streaming query.
         view_log_schema (StructType): The schema for the view log data from Kafka.
-        broadcast_campaigns_df (DataFrame): Broadcasted DataFrame containing campaign information.
+        broadcast_campaigns_df (DataFrame): DataFrame containing campaign information.
     """
 
     def __init__(self, spark: SparkSession, logger: Logger):
@@ -57,7 +57,7 @@ class ViewLogProcessor:
         Load campaign data from CSV and broadcast it for efficient joins.
 
         Returns:
-            DataFrame: Broadcasted DataFrame containing campaign information.
+            DataFrame: DataFrame containing campaign information.
         """
         try:
             campaigns_df = (
@@ -75,15 +75,13 @@ class ViewLogProcessor:
 
         Returns:
             DataFrame: A streaming DataFrame containing the parsed view log data.
-
-        Raises:
-            Exception: If there's an error reading data from Kafka.
         """
         try:
             source_df = (
                 self.spark.readStream.format("kafka")
                 .option("kafka.bootstrap.servers", config.KAFKA_SERVER)
                 .option("subscribe", config.TOPIC_NAME)
+                .option("failOnDataLoss", "false")
                 .load()
                 .select(from_json(col("value").cast("string"), self.view_log_schema).alias("view_log"))
                 .select("view_log.*")
@@ -182,12 +180,16 @@ def main():
     Main function to initialize the Spark session, logger, and ViewLogProcessor.
     It orchestrates the entire ETL process: reading from Kafka, processing data, and writing to Parquet.
     """
+
+    # Initialize logger
+    logger = setup_logging(config.LOG_LEVEL)
+    logger.info(f"KAFKA_SERVER: {config.KAFKA_SERVER}")
+    logger.info(f"LOG_LEVEL: {config.LOG_LEVEL}")
+    logger.info(f"TEST_VALUE: {config.TEST_VALUE}")
+
     try:
-        # Initialize Spark session and logger
+        # Initialize Spark session
         spark = get_spark_session()
-        logger = setup_logging(config.LOG_LEVEL)
-        logger.info(f" logger level is {config.LOG_LEVEL}")
-        print(f"logger level is {config.LOG_LEVEL}")
 
         # Initialize processor with custom parameters
         processor = ViewLogProcessor(spark, logger)

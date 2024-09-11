@@ -23,11 +23,11 @@ def setup_logging(log_level=logging.INFO):
     Sets up the logging configuration for Dockerized environments.
 
     Parameters:
-        log_level (int): The logging level to use (default: INFO).
-
+        log_level : The logging level to use (default: INFO).
     Returns:
         logging.Logger: Configured logger instance.
     """
+
     logger = logging.getLogger(__name__)
     logger.setLevel(log_level)
 

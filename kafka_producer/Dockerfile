@@ -1,4 +1,4 @@
-FROM python:3.8-slim
+FROM python:3.8-slim AS base
 
 RUN apt-get update && apt-get install curl -y
 WORKDIR /app
@@ -11,7 +11,13 @@ COPY utils.py .
 COPY config.py .
 COPY wait-for-kafka.sh .
 RUN chmod +x wait-for-kafka.sh
-# COPY wait-for-it.sh wait-for-it.sh
-# RUN echo "host.docker.internal host-gateway" >> /etc/hosts
 
+
+FROM base AS test
+WORKDIR /app
+COPY ./tests /app/tests
+RUN pip install pytest
+CMD ["pytest", "/app/tests"]
+
+FROM base AS production
 CMD ["./wait-for-kafka.sh", "broker", "9092","python","producer.py"]

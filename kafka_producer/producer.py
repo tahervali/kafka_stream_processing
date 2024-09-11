@@ -1,41 +1,13 @@
 import json
-import random
+import threading
 import time
-import uuid
-from datetime import timedelta, datetime
+from typing import Optional
 
 from kafka import KafkaProducer
 from kafka.errors import KafkaError
 
 from config import config
-from utils import setup_logging
-
-
-def generate_log_data():
-    """
-    Generates a simulated log record according to the specified schema.
-
-    Returns:
-        dict: A dictionary containing the log data with the following fields:
-            - view_id (str): Unique ID of the record.
-            - start_timestamp (str): Timestamp when the view started.
-            - end_timestamp (str): Timestamp when the view ended (and pushed to Kafka).
-            - banner_id (int): Randomly generated banner ID.
-            - campaign_id (int): Randomly generated campaign ID (from 10 to 140 in increments of 10).
-    """
-    view_id = str(uuid.uuid4())  # Generate a unique ID for the record
-    start_timestamp = datetime.now().replace(microsecond=0)
-    end_timestamp = (start_timestamp + timedelta(seconds=random.randint(1, 300))).replace(microsecond=0)
-    banner_id = random.randint(1, 100000)  # Generate a random banner ID
-    campaign_id = random.choice(range(10, 141, 10))  # Generate a random campaign ID
-
-    return {
-        "view_id": view_id,
-        "start_timestamp": start_timestamp.isoformat(),
-        "end_timestamp": end_timestamp.isoformat(),
-        "banner_id": banner_id,
-        "campaign_id": campaign_id,
-    }
+from utils import setup_logging, generate_log_data
 
 
 class CustomKafkaProducer:
@@ -43,19 +15,19 @@ class CustomKafkaProducer:
         """
         Initializes the CustomKafkaProducer with the given Kafka bootstrap servers.
 
-        Args:
+        Parameters:
             bootstrap_servers (str): Address of the Kafka bootstrap server(s).
         """
         self.bootstrap_servers = bootstrap_servers
-        self.producer = self.connect()
+        self.producer: Optional[KafkaProducer] = self.connect()
 
-    def connect(self) -> KafkaProducer:
+    def connect(self) -> Optional[KafkaProducer]:
         """
         Attempts to connect to the Kafka broker with retry logic.
         If the connection fails after MAX_RETRIES, an exception is raised.
 
         Returns:
-            KafkaProducer: A connected KafkaProducer instance.
+            KafkaProducer: A connected KafkaProducer instance, or None if unable to connect.
         """
         retries = 0
         while retries < config.MAX_RETRIES:
@@ -63,42 +35,94 @@ class CustomKafkaProducer:
                 producer = KafkaProducer(
                     bootstrap_servers=self.bootstrap_servers,
                     value_serializer=lambda v: json.dumps(v).encode("utf-8"),
+                    acks='all',  # Ensure message delivery guarantee
+                    linger_ms=5,  # Wait a small-time to batch records
+                    batch_size=16384  # Batch size in bytes (default is 16KB, can increase)
                 )
                 logger.info("Successfully connected to Kafka broker.")
                 return producer
-            except KafkaError as e:
+            except KafkaError as kafkaError:
                 retries += 1
-                logger.error(f"Failed to connect to Kafka broker (attempt {retries}/{config.MAX_RETRIES}): {e}")
+                logger.warning(f"Failed to connect to Kafka broker (attempt "
+                               f"{retries}/{config.MAX_RETRIES}): {kafkaError}")
                 time.sleep(config.RETRY_DELAY)
 
-        raise KafkaError("Failed to connect to Kafka broker after maximum retries.")
+        logger.error("Failed to connect to Kafka broker after maximum retries.")
+        return None
 
     def publish_message(self, message: dict):
         """
-        Publishes a message to the Kafka topic.
+        Publishes a message asynchronously to the Kafka topic.
 
-        Args:
+        Parameters:
             message (dict): The message to be sent to the Kafka topic.
         """
+        if not self.producer:
+            logger.error("Kafka producer is not connected.")
+            return
+
         try:
-            self.producer.send(config.TOPIC_NAME, value=message)
-            self.producer.flush()  # Ensure all messages are sent immediately
-            logger.info(f"Produced message: {message}")
+            self.producer.send(config.TOPIC_NAME, value=message)\
+                .add_callback(self.on_send_success).add_errback(self.on_send_error)
         except KafkaError as kafka_error:
             logger.error(f"Failed to produce message: {kafka_error}")
             raise
+
+    @staticmethod
+    def on_send_success(record_metadata):
+        logger.info(f"Message delivered to {record_metadata.topic} partition {record_metadata.partition} "
+                    f"offset {record_metadata.offset}")
+
+    @staticmethod
+    def on_send_error(exception):
+        logger.error(f"Error in message delivery: {exception}")
 
     def close(self):
         """
         Closes the Kafka producer connection gracefully.
         """
         if self.producer:
+            self.producer.flush()  # Ensure all messages are sent
             self.producer.close()
             logger.info("Kafka producer closed.")
 
 
+def produce_batch(kafka_producer: CustomKafkaProducer, num_messages: int):
+    """
+    Produces a batch of messages to Kafka.
+
+    Parameters:
+        kafka_producer (CustomKafkaProducer): Kafka producer instance.
+        num_messages (int): Number of messages to produce in a batch.
+    """
+    for _ in range(num_messages):
+        log_data = generate_log_data()  # Generate a new log data record
+        kafka_producer.publish_message(log_data)
+
+
+def start_producing(kafka_producer: CustomKafkaProducer):
+    """
+    Start continuous message production using threads.
+
+    Parameters:
+        kafka_producer (CustomKafkaProducer): Kafka producer instance.
+    """
+    while True:
+        threads = []
+        for _ in range(config.THREAD_COUNT):
+            thread = threading.Thread(target=produce_batch, args=(kafka_producer, config.BATCH_SIZE))
+            threads.append(thread)
+            thread.start()
+
+        for thread in threads:
+            thread.join()  # Wait for all threads to finish before starting a new batch
+
+        logger.debug(f"Batch of {config.THREAD_COUNT * config.BATCH_SIZE} messages produced.")
+        time.sleep(config.PRODUCER_INTERVAL)  # Short interval before producing the next batch
+
+
+
 if __name__ == "__main__":
-    # Initialize logger
     logger = setup_logging(config.LOG_LEVEL)
     logger.info("Kafka producer starting...")
 
@@ -107,11 +131,10 @@ if __name__ == "__main__":
         # Create Kafka producer
         producer_instance = CustomKafkaProducer(config.KAFKA_SERVER)
 
-        # Continuously generate and send log data to Kafka
-        while True:
-            log_data = generate_log_data()  # Generate a new log data record
-            producer_instance.publish_message(log_data)  # Produce the log data to the Kafka topic
-            time.sleep(config.PRODUCER_INTERVAL)  # Wait for a specified interval before producing the next message
+        if producer_instance.producer:  # Ensure producer is connected before starting production
+            start_producing(producer_instance)
+        else:
+            logger.error("Failed to start Kafka producer. Exiting...")
 
     except Exception as e:
         logger.error(f"An error occurred: {e}")

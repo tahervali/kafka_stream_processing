@@ -1,58 +1,50 @@
-from pydantic import BaseModel, Field, ConfigDict, field_validator
+import os
+
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
+
+class Config:
+    def __init__(self):
+        # Load environment variables with defaults
+        self.KAFKA_SERVER = os.getenv('KAFKA_SERVER', 'broker:9092')
+        self.TOPIC_NAME = os.getenv('TOPIC_NAME', 'test_topic')
+        self.LOG_LEVEL = os.getenv('LOG_LEVEL', 'INFO')
+        self.WINDOW_DURATION = os.getenv('WINDOW_DURATION', '1 minute')
+        self.WATERMARK_DELAY = os.getenv('WATERMARK_DELAY', '10 seconds')
+        self.PROCESSING_TIME = os.getenv('PROCESSING_TIME', '0 seconds')
+        self.CAMPAIGNS_CSV_PATH = os.getenv('CAMPAIGNS_CSV_PATH', '/app/input_data/campaigns.csv')
+        self.CHECKPOINT_LOCATION = os.getenv('CHECKPOINT_LOCATION', '/app/data/_saveloc')
+        self.REPORTS_LOCATION = os.getenv('REPORTS_LOCATION', '/app/data/')
+        self.TEST_VALUE = os.getenv('TEST_VALUE', 'Got it')
+
+        # Validate fields
+        self._validate()
+
+    def _validate(self):
+        if "minute" not in self.WINDOW_DURATION and "seconds" not in self.WINDOW_DURATION:
+            raise ValueError(f"Invalid time format for WINDOW_DURATION: {self.WINDOW_DURATION}."
+                             f" Must contain 'minute' or 'seconds'.")
+        if "minute" not in self.WATERMARK_DELAY and "seconds" not in self.WATERMARK_DELAY:
+            raise ValueError(f"Invalid time format for WATERMARK_DELAY: {self.WATERMARK_DELAY}. "
+                             f"Must contain 'minute' or 'seconds'.")
+        if "minute" not in self.PROCESSING_TIME and "seconds" not in self.PROCESSING_TIME:
+            raise ValueError(f"Invalid time format for PROCESSING_TIME: {self.PROCESSING_TIME}. "
+                             f"Must contain 'minute' or 'seconds'.")
+
+        for path in [self.CAMPAIGNS_CSV_PATH, self.CHECKPOINT_LOCATION, self.REPORTS_LOCATION]:
+            if not path:
+                raise ValueError(f"Path cannot be empty: {path}")
+
+        valid_levels = {"DEBUG", "INFO", "WARN", "ERROR"}
+        if self.LOG_LEVEL.upper() not in valid_levels:
+            raise ValueError(f"Invalid LOG_LEVEL: {self.LOG_LEVEL}. Must be one of {valid_levels}.")
 
 
-class Config(BaseModel):
-    """
-    Config class for managing application settings using Pydantic's BaseModel.
-    Automatically loads values from environment variables or defaults specified via Field declarations.
-    Also, Validate the fields using field_validator.
-    """
-
-    KAFKA_SERVER: str = Field(default="broker:9092", env="KAFKA_SERVER")
-    TOPIC_NAME: str = Field(default="test_topic", env="TOPIC_NAME")
-    LOG_LEVEL: str = Field(default="INFO", env="LOG_LEVEL")
-    WINDOW_DURATION: str = Field(default="1 minute", env="WINDOW_DURATION")
-    WATERMARK_DELAY: str = Field(default="10 seconds", env="WATERMARK_DELAY")
-    PROCESSING_TIME: str = Field(default="0 seconds", env="PROCESSING_TIME")
-    CAMPAIGNS_CSV_PATH: str = Field(default="/app/input_data/campaigns.csv")
-    CHECKPOINT_LOCATION: str = Field(default="/app/data/_saveloc")
-    REPORTS_LOCATION: str = Field(default="/app/data/")
-
-    model_config = ConfigDict(env_file=".env", validate_assignment=True)
-
-    # Validator to check the validity of the time fields
-    @field_validator("WINDOW_DURATION", "WATERMARK_DELAY", "PROCESSING_TIME", mode="before")
-    def validate_time_format(cls, value: str) -> str:
-        """
-        Validates the format of the time duration fields to ensure they follow proper format.
-        Example formats: "1 minute", "30 seconds", "0 seconds".
-        """
-        if "minute" not in value and "seconds" not in value:
-            raise ValueError(f"Invalid time format for {value}. Must contain 'minute' or 'seconds'.")
-        return value
-
-    # Validator to check if paths are non-empty strings
-    @field_validator("CAMPAIGNS_CSV_PATH", "CHECKPOINT_LOCATION", "REPORTS_LOCATION", mode="before")
-    def validate_paths(cls, value: str) -> str:
-        """
-        Validates that path fields are not empty.
-        Raises:
-            ValueError: If the path is an empty string.
-        """
-        if not value or not isinstance(value, str):
-            raise ValueError(f"Invalid path: {value}. Must be a non-empty string.")
-        return value
-
-    @field_validator("LOG_LEVEL", mode="before")
-    def validate_log_level(cls, value: str) -> str:
-        """
-        Validates the log level to ensure it's a valid logging level.
-        """
-        valid_levels = {"DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"}
-        if value.upper() not in valid_levels:
-            raise ValueError(f"Invalid LOG_LEVEL: {value}. Must be one of {valid_levels}.")
-        return value.upper()
-
-
-# Instantiate the configuration class (this reads from environment variables or uses defaults)
+# Instantiate the configuration class (this reads from .env or uses defaults)
 config = Config()
+print(f" KAFKA_SERVER is: {config.KAFKA_SERVER}")
+print(f" TOPIC_NAME is: {config.TOPIC_NAME}")
+print(f" TEST_VALUE is: {config.TEST_VALUE}")
+print(f" TEST_VALUE os env is: {os.getenv('TEST_VALUE')}")
