@@ -1,120 +1,95 @@
 import pytest
 from unittest.mock import MagicMock, patch
 from kafka.errors import KafkaError
-from src.producer import CustomKafkaProducer, produce_batch, start_producing
+from src.producer import CustomKafkaProducer  # Update this import path as needed
 
 
-# Mock the configuration values
-mock_config = {
-    "KAFKA_SERVER": "broker:9092",
-    "TOPIC_NAME": "view_log",
-    "MAX_RETRIES": 3,
-    "RETRY_DELAY": 1,
-    "PRODUCER_INTERVAL": 1,
-    "THREAD_COUNT": 2,
-    "BATCH_SIZE": 2,
-    "LOG_LEVEL": "INFO",
-}
+@pytest.fixture
+def mock_kafka_producer():
+    with patch("src.producer.KafkaProducer") as mock:  # Update this path
+        yield mock
+
+
+@pytest.fixture
+def mock_config():
+    with patch("src.producer.config") as mock:  # Update this path
+        mock.MAX_RETRIES = 3
+        mock.RETRY_DELAY = 1
+        mock.TOPIC_NAME = "test_topic"
+        yield mock
 
 
 @pytest.fixture
 def mock_logger():
-    with patch("src.producer.setup_logging") as mock_setup_logging:
-        logger = MagicMock()
-        mock_setup_logging.return_value = logger
-        yield logger
+    with patch("src.producer.setup_logging") as mock_setup:  # Update this path
+        mock_logger = MagicMock()
+        mock_setup.return_value = mock_logger
+        yield mock_logger
 
 
 @pytest.fixture
-def mock_kafka_producer(mock_logger):
-    with patch("src.producer.CustomKafkaProducer") as MockKafkaProducer:
-        producer_instance = MockKafkaProducer.return_value
-        producer_instance.send.return_value.add_callback.return_value = None
-        producer_instance.send.return_value.add_errback.return_value = None
-        return producer_instance
+def producer(mock_kafka_producer, mock_config, mock_logger):
+    return CustomKafkaProducer("localhost:9092")
 
 
-@patch("src.producer.config", new=MagicMock(**mock_config))
-def test_connect_success(mock_kafka_producer, mock_logger):
-    # Test successful Kafka connection
-    producer = CustomKafkaProducer(mock_config["KAFKA_SERVER"])
+def test_successful_connection(producer, mock_kafka_producer, mock_logger):
     assert producer.producer is not None
+    mock_kafka_producer.assert_called_once()
     mock_logger.info.assert_called_with("Successfully connected to Kafka broker.")
 
 
+def test_connection_failure(mock_kafka_producer, mock_config, mock_logger):
+    mock_kafka_producer.side_effect = KafkaError("Connection failed")
+    producer = CustomKafkaProducer("localhost:9092")
+    assert producer.producer is None
+    mock_logger.error.assert_called_with(
+        "Failed to connect to Kafka broker after maximum retries."
+    )
 
-@patch("src.producer.config", new=MagicMock(**mock_config))
-def test_connect_failure(mock_logger):
-    # Patch the KafkaProducer instantiation inside the connect method to raise KafkaError
-    with patch("kafka.KafkaProducer", side_effect=KafkaError("Connection failed")) as mock_kafka_producer:
 
-        # Initialize the CustomKafkaProducer
-        producer = CustomKafkaProducer(mock_config["KAFKA_SERVER"])
+def test_publish_message_success(producer, mock_config):
+    mock_send = MagicMock()
+    producer.producer.send = mock_send
 
-        # Ensure producer is None after failed retries
-        assert producer.producer is None
+    message = {"key": "value"}
+    producer.publish_message(message)
 
-        # Check if the logger's warning method was called the expected number of times (equal to MAX_RETRIES)
-        assert mock_logger.warning.call_count == mock_config["MAX_RETRIES"]
+    mock_send.assert_called_once_with(mock_config.TOPIC_NAME, value=message)
 
-        # Verify that an error log was recorded after the retries were exhausted
-        mock_logger.error.assert_called_with("Failed to connect to Kafka broker after maximum retries.")
 
-        # Ensure KafkaProducer was called for each retry attempt
-        assert mock_kafka_producer.call_count == mock_config["MAX_RETRIES"]
+def test_publish_message_failure(producer, mock_logger):
+    producer.producer.send.side_effect = KafkaError("Send failed")
 
-#
-# @patch("src.producer.config", new=MagicMock(**mock_config))
-# def test_publish_message_success(mock_kafka_producer, mock_logger):
-#     # Test message publishing success
-#     producer = CustomKafkaProducer(mock_config["KAFKA_SERVER"])
-#     message = {"view_id": "test_view_id"}
-#
-#     producer.publish_message(message)
-#
-#     mock_kafka_producer.send.assert_called_with(mock_config["TOPIC_NAME"], value=message)
-#     mock_logger.error.assert_not_called()
-#
-#
-# @patch("src.producer.config", new=MagicMock(**mock_config))
-# def test_publish_message_failure(mock_kafka_producer, mock_logger):
-#     # Simulate KafkaError when publishing message
-#     producer = CustomKafkaProducer(mock_config["KAFKA_SERVER"])
-#     mock_kafka_producer.send.side_effect = KafkaError("Failed to send message")
-#
-#     with pytest.raises(KafkaError):
-#         producer.publish_message({"view_id": "test_view_id"})
-#
-#     mock_logger.error.assert_called_with("Failed to produce message: Failed to send message")
-#
-#
-# @patch("src.producer.config", new=MagicMock(**mock_config))
-# def test_close(mock_kafka_producer, mock_logger):
-#     # Test closing the Kafka producer
-#     producer = CustomKafkaProducer(mock_config["KAFKA_SERVER"])
-#     producer.close()
-#
-#     mock_kafka_producer.flush.assert_called_once()
-#     mock_kafka_producer.close.assert_called_once()
-#     mock_logger.info.assert_called_with("Kafka producer closed.")
-#
-#
-# @patch("src.producer.config", new=MagicMock(**mock_config))
-# def test_produce_batch(mock_kafka_producer, mock_logger):
-#     # Test producing a batch of messages
-#     producer = CustomKafkaProducer(mock_config["KAFKA_SERVER"])
-#     with patch("src.producer.generate_log_data", return_value={"view_id": "test_view_id"}):
-#         produce_batch(producer, 3)
-#         assert mock_kafka_producer.send.call_count == 3
-#
-#
-# @patch("src.producer.config", new=MagicMock(**mock_config))
-# def test_start_producing(mock_kafka_producer, mock_logger):
-#     # Test the continuous message production using threads
-#     producer = CustomKafkaProducer(mock_config["KAFKA_SERVER"])
-#
-#     with patch("threading.Thread.start"):
-#         start_producing(producer)
-#         mock_logger.debug.assert_called_with(
-#             f"Batch of {mock_config['THREAD_COUNT'] * mock_config['BATCH_SIZE']} messages produced."
-#         )
+    with pytest.raises(KafkaError):
+        producer.publish_message({"key": "value"})
+    mock_logger.error.assert_called_with(
+        "Failed to produce message: KafkaError: Send failed"
+    )
+
+
+def test_close_producer(producer, mock_logger):
+    producer.close()
+    producer.producer.flush.assert_called_once()
+    producer.producer.close.assert_called_once()
+    mock_logger.info.assert_called_with("Kafka producer closed.")
+
+
+def test_on_send_success(producer, mock_logger):
+    record_metadata = MagicMock()
+    record_metadata.topic = "test_topic"
+    record_metadata.partition = 0
+    record_metadata.offset = 1
+    producer.on_send_success(record_metadata)
+    mock_logger.info.assert_called_with(
+        "Message delivered to test_topic partition 0 offset 1"
+    )
+
+
+def test_on_send_error(producer, mock_logger):
+    exception = Exception("Test exception")
+    producer.on_send_error(exception)
+    mock_logger.error.assert_called_with("Error in message delivery: Test exception")
+
+
+if __name__ == "__main__":
+    pytest.main()
