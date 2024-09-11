@@ -6,8 +6,8 @@ from typing import Optional
 from kafka import KafkaProducer
 from kafka.errors import KafkaError
 
-from config import config
-from utils import setup_logging, generate_log_data
+from src.config import config
+from src.utils import setup_logging, generate_log_data
 
 
 class CustomKafkaProducer:
@@ -35,16 +35,18 @@ class CustomKafkaProducer:
                 producer = KafkaProducer(
                     bootstrap_servers=self.bootstrap_servers,
                     value_serializer=lambda v: json.dumps(v).encode("utf-8"),
-                    acks='all',  # Ensure message delivery guarantee
+                    acks="all",  # Ensure message delivery guarantee
                     linger_ms=5,  # Wait a small-time to batch records
-                    batch_size=16384  # (default is 16KB, can be increased)
+                    batch_size=16384,  # (default is 16KB, can be increased)
                 )
                 logger.info("Successfully connected to Kafka broker.")
                 return producer
             except KafkaError as kafkaError:
                 retries += 1
-                logger.warning(f"Failed to connect to Kafka broker (attempt "
-                               f"{retries}/{config.MAX_RETRIES}): {kafkaError}")
+                logger.warning(
+                    f"Failed to connect to Kafka broker (attempt "
+                    f"{retries}/{config.MAX_RETRIES}): {kafkaError}"
+                )
                 time.sleep(config.RETRY_DELAY)
 
         logger.error("Failed to connect to Kafka broker after maximum retries.")
@@ -62,16 +64,19 @@ class CustomKafkaProducer:
             return
 
         try:
-            self.producer.send(config.TOPIC_NAME, value=message)\
-                .add_callback(self.on_send_success).add_errback(self.on_send_error)
+            self.producer.send(config.TOPIC_NAME, value=message).add_callback(
+                self.on_send_success
+            ).add_errback(self.on_send_error)
         except KafkaError as kafka_error:
             logger.error(f"Failed to produce message: {kafka_error}")
             raise
 
     @staticmethod
     def on_send_success(record_metadata):
-        logger.info(f"Message delivered to {record_metadata.topic} partition {record_metadata.partition} "
-                    f"offset {record_metadata.offset}")
+        logger.info(
+            f"Message delivered to {record_metadata.topic} partition {record_metadata.partition} "
+            f"offset {record_metadata.offset}"
+        )
 
     @staticmethod
     def on_send_error(exception):
@@ -110,16 +115,21 @@ def start_producing(kafka_producer: CustomKafkaProducer):
     while True:
         threads = []
         for _ in range(config.THREAD_COUNT):
-            thread = threading.Thread(target=produce_batch, args=(kafka_producer, config.BATCH_SIZE))
+            thread = threading.Thread(
+                target=produce_batch, args=(kafka_producer, config.BATCH_SIZE)
+            )
             threads.append(thread)
             thread.start()
 
         for thread in threads:
             thread.join()  # Wait for all threads to finish before starting a new batch
 
-        logger.debug(f"Batch of {config.THREAD_COUNT * config.BATCH_SIZE} messages produced.")
-        time.sleep(config.PRODUCER_INTERVAL)  # Short interval before producing the next batch
-
+        logger.debug(
+            f"Batch of {config.THREAD_COUNT * config.BATCH_SIZE} messages produced."
+        )
+        time.sleep(
+            config.PRODUCER_INTERVAL
+        )  # Short interval before producing the next batch
 
 
 if __name__ == "__main__":
@@ -133,7 +143,9 @@ if __name__ == "__main__":
         # Create Kafka producer
         producer_instance = CustomKafkaProducer(config.KAFKA_SERVER)
 
-        if producer_instance.producer:  # Ensure producer is connected before starting production
+        if (
+            producer_instance.producer
+        ):  # Ensure producer is connected before starting production
             start_producing(producer_instance)
         else:
             logger.error("Failed to start Kafka producer. Exiting...")

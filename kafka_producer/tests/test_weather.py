@@ -1,7 +1,7 @@
 # import requests
 from unittest.mock import patch
 
-from weather import get_temperature
+from src.weather import get_temperature
 
 
 def test_get_temperature():

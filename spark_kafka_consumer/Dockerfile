@@ -10,21 +10,20 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy resources
-COPY spark_consumer.py .
-COPY utils.py .
-COPY config.py .
+COPY src/ ./src/
+COPY tests/ ./tests/
 COPY wait-for-kafka.sh .
 RUN chmod +x wait-for-kafka.sh
 # COPY wait-for-it.sh wait-for-it.sh
 # RUN echo "host.docker.internal host-gateway" >> /etc/hosts
+ENV PYTHONPATH="${PYTHONPATH}:/app/src"
+
 
 FROM base AS test
 WORKDIR /app
-COPY ./tests /app/tests
-COPY weather.py /app/tests
-RUN pip install pytest
+RUN pip install pytest==8.3.2
 CMD ["pytest", "/app/tests"]
 
 FROM base AS production
-CMD ["./wait-for-kafka.sh", "broker", "9092","python","spark_consumer.py"]
+WORKDIR /app
+CMD ["./wait-for-kafka.sh", "broker", "9092","python","./src/spark_consumer.py"]

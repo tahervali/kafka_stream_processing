@@ -2,14 +2,26 @@ from logging import Logger
 
 from pyspark.sql import SparkSession, DataFrame
 from pyspark.sql.functions import (
-    col, from_json, unix_timestamp, avg, count, window, round, broadcast, date_format
+    col,
+    from_json,
+    unix_timestamp,
+    avg,
+    count,
+    window,
+    round,
+    broadcast,
+    date_format,
 )
 from pyspark.sql.types import (
-    StructType, StructField, IntegerType, StringType, TimestampType
+    StructType,
+    StructField,
+    IntegerType,
+    StringType,
+    TimestampType,
 )
 
-from config import config
-from utils import get_spark_session, setup_logging
+from src.config import config
+from src.utils import get_spark_session, setup_logging
 
 
 class ViewLogProcessor:
@@ -43,13 +55,15 @@ class ViewLogProcessor:
         self.window_duration = config.WINDOW_DURATION
         self.watermark_delay = config.WATERMARK_DELAY
         self.processing_time = config.PROCESSING_TIME
-        self.view_log_schema = StructType([
-            StructField("view_id", StringType(), True),
-            StructField("start_timestamp", TimestampType(), True),
-            StructField("end_timestamp", TimestampType(), True),
-            StructField("banner_id", IntegerType(), True),
-            StructField("campaign_id", IntegerType(), True),
-        ])
+        self.view_log_schema = StructType(
+            [
+                StructField("view_id", StringType(), True),
+                StructField("start_timestamp", TimestampType(), True),
+                StructField("end_timestamp", TimestampType(), True),
+                StructField("banner_id", IntegerType(), True),
+                StructField("campaign_id", IntegerType(), True),
+            ]
+        )
         self.broadcast_campaigns_df = self.load_and_broadcast_campaigns()
 
     def load_and_broadcast_campaigns(self) -> DataFrame:
@@ -60,10 +74,9 @@ class ViewLogProcessor:
             DataFrame: DataFrame containing campaign information.
         """
         try:
-            campaigns_df = (
-                self.spark.read.csv(config.CAMPAIGNS_CSV_PATH, header=True, inferSchema=True)
-                .repartition("campaign_id")
-            )
+            campaigns_df = self.spark.read.csv(
+                config.CAMPAIGNS_CSV_PATH, header=True, inferSchema=True
+            ).repartition("campaign_id")
             return broadcast(campaigns_df)
         except Exception as e:
             self.logger.error(f"Error loading and broadcasting campaigns data: {e}")
@@ -83,7 +96,11 @@ class ViewLogProcessor:
                 .option("subscribe", config.TOPIC_NAME)
                 .option("failOnDataLoss", "false")
                 .load()
-                .select(from_json(col("value").cast("string"), self.view_log_schema).alias("view_log"))
+                .select(
+                    from_json(col("value").cast("string"), self.view_log_schema).alias(
+                        "view_log"
+                    )
+                )
                 .select("view_log.*")
             )
             self.logger.info("Successfully read data from Kafka.")
@@ -108,35 +125,36 @@ class ViewLogProcessor:
                 df.dropDuplicates(["view_id"])
                 .withColumn(
                     "view_duration",
-                    unix_timestamp("end_timestamp") - unix_timestamp("start_timestamp")
+                    unix_timestamp("end_timestamp") - unix_timestamp("start_timestamp"),
                 )
                 .withWatermark("end_timestamp", self.watermark_delay)
                 .groupBy(
                     "campaign_id",
-                    window("end_timestamp", self.window_duration).alias("time_window")
+                    window("end_timestamp", self.window_duration).alias("time_window"),
                 )
                 .agg(
                     round(avg("view_duration"), 2).alias("avg_duration"),
-                    count("view_id").alias("total_count")
+                    count("view_id").alias("total_count"),
                 )
                 .select(
                     "campaign_id",
                     col("time_window.start").alias("minute_timestamp"),
                     "avg_duration",
-                    "total_count"
+                    "total_count",
                 )
             )
 
             # Join with campaign data
-            return (
-                processed_df.join(self.broadcast_campaigns_df, on="campaign_id", how="inner")
-                .select(
-                    "campaign_id",
-                    "network_id",
-                    date_format("minute_timestamp", "yyyy-MM-dd_HH-mm-ss").alias("minute_timestamp"),
-                    "avg_duration",
-                    "total_count"
-                )
+            return processed_df.join(
+                self.broadcast_campaigns_df, on="campaign_id", how="inner"
+            ).select(
+                "campaign_id",
+                "network_id",
+                date_format("minute_timestamp", "yyyy-MM-dd_HH-mm-ss").alias(
+                    "minute_timestamp"
+                ),
+                "avg_duration",
+                "total_count",
             )
         except Exception as e:
             self.logger.error(f"Error processing data: {e}")
@@ -156,8 +174,7 @@ class ViewLogProcessor:
         """
         try:
             query = (
-                df.writeStream
-                .outputMode("append")
+                df.writeStream.outputMode("append")
                 .format("parquet")
                 .trigger(processingTime=self.processing_time)
                 .option("checkpointLocation", config.CHECKPOINT_LOCATION)
@@ -166,12 +183,16 @@ class ViewLogProcessor:
                 .start()
             )
 
-            self.logger.info(f"Streaming query started with processing time {self.processing_time}. "
-                             f"Waiting for termination...")
+            self.logger.info(
+                f"Streaming query started with processing time {self.processing_time}. "
+                f"Waiting for termination..."
+            )
             query.awaitTermination()
 
         except Exception as e:
-            self.logger.error(f"Error writing data to Parquet or managing streaming query: {e}")
+            self.logger.error(
+                f"Error writing data to Parquet or managing streaming query: {e}"
+            )
             raise
 
 

@@ -40,6 +40,12 @@ services:
     environment:
       KAFKA_SERVER: ${KAFKA_SERVER}
       PRODUCER_INTERVAL: ${PRODUCER_INTERVAL}
+      TOPIC_NAME: ${TOPIC_NAME}
+      MAX_RETRIES: ${MAX_RETRIES}
+      RETRY_DELAY: ${RETRY_DELAY}
+      THREAD_COUNT: ${THREAD_COUNT}
+      BATCH_SIZE: ${BATCH_SIZE}
+      LOG_LEVEL: ${LOG_LEVEL}
     networks:
       - kafka-net
   
@@ -67,9 +73,15 @@ services:
       KAFKA_SERVER: ${KAFKA_SERVER}
       CONSUMER_INTERVAL: ${CONSUMER_INTERVAL}
       LOG_LEVEL: ${LOG_LEVEL}
+      TOPIC_NAME: ${TOPIC_NAME}
+      WINDOW_DURATION: ${WINDOW_DURATION}
+      WATERMARK_DELAY: ${WATERMARK_DELAY}
+      PROCESSING_TIME: ${PROCESSING_TIME}
+      BASE_DATA_LOC_CONTAINER: ${BASE_DATA_LOC_CONTAINER}
+      TEST_VALUE: ${TEST_VALUE}
     volumes:
-      - ./${LOG_DATA}/output_data:/app/data
-      - ./${LOG_DATA}/input_data:/app/input_data
+      - ./${LOG_DATA}:${BASE_DATA_LOC_CONTAINER}
+      # - ./${LOG_DATA}/input_data:/app/data/input_data
     networks:
       - kafka-net
 
