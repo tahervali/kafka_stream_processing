@@ -2,24 +2,11 @@ from logging import Logger
 
 from pyspark.sql import SparkSession, DataFrame
 from pyspark.sql.functions import (
-    col,
-    from_json,
-    unix_timestamp,
-    avg,
-    count,
-    window,
-    round,
-    broadcast,
-    date_format,
+    col, from_json, unix_timestamp, avg, count, window, round, broadcast, date_format
 )
 from pyspark.sql.types import (
-    StructType,
-    StructField,
-    IntegerType,
-    StringType,
-    TimestampType,
+    StructType, StructField, IntegerType, StringType, TimestampType
 )
-
 from src.config import config
 from src.utils import get_spark_session, setup_logging
 
@@ -46,7 +33,7 @@ class ViewLogProcessor:
         """
         Initialize the ViewLogProcessor with a SparkSession, logger, and optional parameters.
 
-        Args:
+        Parameters:
             spark (SparkSession): The active Spark session.
             logger (Logger): Logger for recording processing information and errors.
         """
@@ -74,9 +61,10 @@ class ViewLogProcessor:
             DataFrame: DataFrame containing campaign information.
         """
         try:
-            campaigns_df = self.spark.read.csv(
-                config.CAMPAIGNS_CSV_PATH, header=True, inferSchema=True
-            ).repartition("campaign_id")
+            campaigns_df = (
+                self.spark.read.csv(config.CAMPAIGNS_CSV_PATH, header=True, inferSchema=True)
+                .repartition("campaign_id")
+            )
             return broadcast(campaigns_df)
         except Exception as e:
             self.logger.error(f"Error loading and broadcasting campaigns data: {e}")
@@ -94,13 +82,10 @@ class ViewLogProcessor:
                 self.spark.readStream.format("kafka")
                 .option("kafka.bootstrap.servers", config.KAFKA_SERVER)
                 .option("subscribe", config.TOPIC_NAME)
-                .option("failOnDataLoss", "false")
+                .option("startingOffsets", config.STARTING_OFFSETS)
+                .option("failOnDataLoss", config.FAIL_ON_DATA_LOSS)
                 .load()
-                .select(
-                    from_json(col("value").cast("string"), self.view_log_schema).alias(
-                        "view_log"
-                    )
-                )
+                .select(from_json(col("value").cast("string"), self.view_log_schema).alias("view_log"))
                 .select("view_log.*")
             )
             self.logger.info("Successfully read data from Kafka.")
@@ -114,7 +99,7 @@ class ViewLogProcessor:
         Process the streaming DataFrame to compute average view duration and total view count per window,
         and join with campaign data.
 
-        Args:
+        Parameters:
             df (DataFrame): The streaming DataFrame containing view log data.
 
         Returns:
@@ -145,16 +130,15 @@ class ViewLogProcessor:
             )
 
             # Join with campaign data
-            return processed_df.join(
-                self.broadcast_campaigns_df, on="campaign_id", how="inner"
-            ).select(
-                "campaign_id",
-                "network_id",
-                date_format("minute_timestamp", "yyyy-MM-dd_HH-mm-ss").alias(
-                    "minute_timestamp"
-                ),
-                "avg_duration",
-                "total_count",
+            return (
+                processed_df.join(self.broadcast_campaigns_df, on="campaign_id", how="inner")
+                .select(
+                    "campaign_id",
+                    "network_id",
+                    date_format("minute_timestamp", "yyyy-MM-dd_HH-mm-ss").alias("minute_timestamp"),
+                    "avg_duration",
+                    "total_count"
+                )
             )
         except Exception as e:
             self.logger.error(f"Error processing data: {e}")
@@ -166,11 +150,8 @@ class ViewLogProcessor:
 
         This method also starts the streaming query and waits for its termination.
 
-        Args:
+        Parameters:
             df (DataFrame): The processed DataFrame with aggregated results and campaign information.
-
-        Raises:
-            Exception: If there's an error writing data to Parquet files or managing the streaming query.
         """
         try:
             query = (

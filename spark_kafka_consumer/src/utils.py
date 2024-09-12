@@ -19,7 +19,7 @@ def get_spark_session():
         - spark.sql.parquet.compression.codec: Compresses Parquet files using GZIP.
         - spark.sql.streaming.noDataMicroBatches.enabled: Disables micro-batches when there's no data.
         - spark.streaming.kafka.consumer.poll.ms: Sets the Kafka consumer poll interval to 500ms.
-        - spark.sql.shuffle.partitions: Sets the number of shuffle partitions to 30 for optimization.
+        - spark.sql.shuffle.partitions: Sets the number of shuffle partitions.
 
     Returns:
         SparkSession: A configured SparkSession instance.

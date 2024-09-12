@@ -13,6 +13,8 @@ class Config:
         WINDOW_DURATION (str): Duration of the window for stream processing. Default is '1 minute'.
         WATERMARK_DELAY (str): Maximum allowed lateness for event-time processing. Default is '10 seconds'.
         PROCESSING_TIME (str): The interval for processing in streaming jobs. Default is '0 seconds'.
+        STARTING_OFFSETS (str): The starting offsets for the stream processing job. Default is 'latest'.
+        FAIL_ON_DATA_LOSS (str): Whether to fail the job if data loss occurs. Default is 'false'.
         BASE_DATA_LOC_CONTAINER (str): Base directory for input and output data inside the container.
         CAMPAIGNS_CSV_PATH (str): Path to the campaigns CSV file.
         REPORTS_LOCATION (str): Directory where reports are saved.
@@ -30,6 +32,8 @@ class Config:
         self.WINDOW_DURATION = os.getenv("WINDOW_DURATION", "1 minute")
         self.WATERMARK_DELAY = os.getenv("WATERMARK_DELAY", "10 seconds")
         self.PROCESSING_TIME = os.getenv("PROCESSING_TIME", "0 seconds")
+        self.STARTING_OFFSETS = os.getenv("STARTING_OFFSETS", "latest")
+        self.FAIL_ON_DATA_LOSS = os.getenv("FAIL_ON_DATA_LOSS", "false")
         self.BASE_DATA_LOC_CONTAINER = os.getenv("BASE_DATA_LOC_CONTAINER", "/app/data")
         self.CAMPAIGNS_CSV_PATH = (self.BASE_DATA_LOC_CONTAINER + "/input_data/campaigns.csv")
         self.REPORTS_LOCATION = self.BASE_DATA_LOC_CONTAINER + "/output_data/"
@@ -41,6 +45,7 @@ class Config:
     def _validate(self):
         """
         Validates certain fields to ensure that they are formatted or configured correctly.
+        Add more validation as per requirement.
 
         Raises:
             ValueError: If any time-based field is not in the correct format,
