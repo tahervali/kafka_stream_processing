@@ -5,10 +5,10 @@ This project demonstrates a real-time data processing pipeline using Apache Kafk
 ## Project Structure
 
 - `kafka_producer/`: Contains the Kafka producer code
-  - `src/`: source directory for Kafka producer
+  - `src/`: Source directory for Kafka producer
     - `config.py`: Configuration settings for the producer
     - `producer.py`: Generates and sends simulated view log data to Kafka
-    - `utils.py`: Utility functions for the producer
+    - `utils.py`: Utility functions for the producer.It contains view_log generation script
   - `tests/`: Contains unit test files for producer
     - `test_generate_log_data.py`: test file for generate_log_data function
     - `test_producer.py`: test file for producer file
@@ -19,12 +19,12 @@ This project demonstrates a real-time data processing pipeline using Apache Kafk
   - `input_date/`: Contains campaigns.csv file
   - `output_date/`: Stores final data as parquet file
 - `spark_kafka_consumer/`: Contains the Spark streaming consumer code
-  - `src/`: source directory for Kafka consumer
+  - `src/`: Source directory for Kafka consumer
     - `config.py`: Configuration settings for the consumer
     - `consumer.py`: Processes streaming data from Kafka using Spark
     - `utils.py`: Utility functions for the consumer
   - `tests/`: Contains unit test files for consumer
-    - `test_consumer.py`: test file for producer file
+    - `test_consumer.py`: Test file for consumer file
   - `Dockerfile`: Docker File for the consumer
   - `requirements.txt`: Python dependencies for the consumer
   - `wait-for-kafka.sh`: Shell script to wait for Kafka to be ready

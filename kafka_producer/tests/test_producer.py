@@ -1,18 +1,18 @@
 import pytest
 from unittest.mock import MagicMock, patch
 from kafka.errors import KafkaError
-from src.producer import CustomKafkaProducer  # Update this import path as needed
+from src.producer import CustomKafkaProducer
 
 
 @pytest.fixture
 def mock_kafka_producer():
-    with patch("src.producer.KafkaProducer") as mock:  # Update this path
+    with patch("src.producer.KafkaProducer") as mock:
         yield mock
 
 
 @pytest.fixture
 def mock_config():
-    with patch("src.producer.config") as mock:  # Update this path
+    with patch("src.producer.config") as mock:
         mock.MAX_RETRIES = 3
         mock.RETRY_DELAY = 1
         mock.TOPIC_NAME = "test_topic"
@@ -21,7 +21,7 @@ def mock_config():
 
 @pytest.fixture
 def mock_logger():
-    with patch("src.producer.setup_logging") as mock_setup:  # Update this path
+    with patch("src.producer.setup_logging") as mock_setup:
         mock_logger = MagicMock()
         mock_setup.return_value = mock_logger
         yield mock_logger
